@@ -38,7 +38,17 @@ select{font:inherit;padding:3px 6px;border-radius:6px;border:1px solid var(--lin
 .qt{font-size:1.2rem;font-weight:700;margin:10px 0}.exp{margin-top:10px;padding:10px 12px;border-radius:10px;background:#fdeaf1}.star{color:#c98a00}
 .rad{margin:6px 0}.rad .l{display:flex;justify-content:space-between;font-size:.92rem}.rad .b{height:12px;background:#eee;border-radius:9px;overflow:hidden}.rad .b i{display:block;height:100%}
 .big{font-size:2.4rem;font-weight:800;color:var(--acc)}
-</style></head><body><div class="wrap">
+.mut{color:var(--mut);font-size:.88rem}
+.panel .row{margin-top:8px}
+.sheet .item{margin:10px 0;break-inside:avoid}
+.pj{font-size:1.5rem;font-weight:700;line-height:1.6;margin:8px 0}
+.pjo{font-size:1.2rem;padding:8px 14px;margin:8px 0;border:2px solid var(--line);border-radius:12px;background:#fff}.pjo.ok{border-color:var(--ok);background:var(--okbg)}
+.pjex{font-size:1.05rem;margin-top:10px;padding:10px 12px;border-radius:10px;background:#fdeaf1;visibility:hidden}.pjex.on{visibility:visible}
+.tmw{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.tmw div{flex:1;min-width:130px;text-align:center;border:1px solid var(--line);border-radius:12px;padding:8px;background:#fff}.tmw b{display:block;font-size:1.8rem;color:var(--acc)}
+button:disabled{opacity:.45;cursor:default}
+body.proj .wrap{max-width:1200px}body.proj .pj{font-size:2.4rem}body.proj .pjo{font-size:1.9rem;padding:12px 20px}body.proj .pjex{font-size:1.5rem}body.proj .tmw b{font-size:2.6rem}
+@media print{.noprint,#start,#play,#end{display:none!important}body{background:#fff}.wrap{max-width:none;padding:0}}
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script></head><body><div class="wrap">
 <div id="start"><div class="hero"><p>線上專屬特訓基地・國語文</p><h1>古今職業稱謂・即時檢測</h1><p>依〈古今稱呼大不同〉與〈古代職業稱謂〉命題・單題即時對答案與解析</p>
 <p>總題數 <b id="n"></b>　涵蓋類別 <b>3</b>　<span class="star">★</span>重要考題</p></div>
 <div class="panel"><p><b>作答方式</b>：每題點選一個選項就立刻判定對錯並顯示解析。答錯不用擔心，看完解析後回到講義再讀一次。</p>
@@ -84,4 +94,106 @@ function finish(){clearInterval(tm);$('play').classList.add('hide');$('end').cla
  $('coach').textContent=(acc>=0.9?'幾乎滿分！記得再分辨「捕快／仵作／細作」這幾個容易混淆的官府職稱。':acc>=0.7?'表現不錯，把錯題的解析再讀一遍就能更穩。':'別灰心，先背熟「古代說法＋現代說法」的配對，再回來挑戰。')+(weak.length?' 建議回頭加強：'+weak.join('、')+'。':'');}
 $('quit').onclick=()=>{if(answered===0){clearInterval(tm);$('play').classList.add('hide');$('start').classList.remove('hide');return}if(confirm('要結束測驗嗎？會用目前已作答的 '+answered+' 題計算成績。'))finish()};
 $('again').onclick=()=>{$('end').classList.add('hide');$('start').classList.remove('hide')};
+
+/* ===== 三大功能：錯題本／題庫抽題與下載區／上課投影模式 ===== */
+const PFX='gz',TTL='古今職業稱謂',WBK=PFX+'_wb';
+const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const esc=s=>String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+const LET='ABCD';
+function mixQ(q){const idx=q.opts.map((o,k)=>k);const mix=q.opts.length>2?shuf(idx):idx;return Object.assign({},q,{opts:mix.map(k=>q.opts[k]),a:mix.indexOf(q.a)})}
+function catOf(k){return CATS.find(c=>c.k===k)||CATS[0]}
+
+/* --- 錯題本：答錯收進來，連續答對 2 次畢業 --- */
+function wbRecord(q,ok){const wb=LS.get(WBK,{}),k=q.q;
+ if(ok){if(wb[k]){wb[k].n++;if(wb[k].n>=2)delete wb[k]}}
+ else wb[k]={q:{q:q.q,opts:q.opts,a:q.a,exp:q.exp,cat:q.cat,star:q.star,hint:q.hint},n:0};
+ LS.set(WBK,wb)}
+const _pick=pick;
+pick=function(k){const q=Q[i];_pick(k);wbRecord(q,k===q.a)};
+function wbList(){return Object.values(LS.get(WBK,{})).map(x=>x.q)}
+function startList(list){Q=shuf(list).slice(0,10).map(mixQ);
+ i=0;score=0;answered=0;right=0;wrong=[];stat={};CATS.forEach(c=>stat[c.k]={r:0,t:0});t0=Date.now();clearInterval(tm);
+ tm=setInterval(()=>$('time').textContent=fmt(Math.floor((Date.now()-t0)/1000)),500);
+ $('start').classList.add('hide');$('end').classList.add('hide');X.classList.add('hide');$('play').classList.remove('hide');show()}
+
+/* --- 子畫面容器 --- */
+const X=document.createElement('div');X.id='x';X.className='hide';document.querySelector('.wrap').appendChild(X);
+function openX(html){['start','play','end'].forEach(id=>$(id).classList.add('hide'));X.classList.remove('hide');X.innerHTML=html;window.scrollTo(0,0)}
+function closeX(){document.onkeydown=null;document.body.classList.remove('proj');X.classList.add('hide');X.innerHTML='';$('start').classList.remove('hide');renderHome()}
+
+/* --- 首頁新增三個區塊 --- */
+$('start').insertAdjacentHTML('beforeend',
+ '<div class="panel"><b>🧠 錯題本（<span id="wbn">0</span> 題）</b> <span class="mut">答錯會自動收進來，連續答對 2 次才畢業</span><div class="row"><button class="pri" id="wbrv">複習錯題</button><button id="wbpr">🖨 列印我的錯題卷</button></div></div>'+
+ '<div class="panel"><b>📥 題庫抽題與下載區</b> <span class="mut">自選範圍抽題，分「學生版／教師版」下載</span><div class="row"><button class="pri" id="bkgo">進入抽題區</button></div></div>'+
+ '<div class="panel"><b>📽 上課投影模式</b> <span class="mut">大字、分組計分、按空白鍵揭曉</span><div class="row" id="pjrow"></div></div>');
+$('pjrow').innerHTML=['all'].concat(CATS.map(c=>c.k)).map(k=>'<button data-p="'+k+'">'+(k==='all'?'🎯 全部':'▶ '+esc(catOf(k).n))+'</button>').join('');
+$('pjrow').querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>proj(b.dataset.p));
+function renderHome(){const n=wbList().length;$('wbn').textContent=n;$('wbrv').disabled=!n;$('wbpr').disabled=!n}
+$('wbrv').onclick=()=>startList(wbList());
+$('wbpr').onclick=()=>sheetWB();
+$('bkgo').onclick=()=>bank();
+renderHome();
+['again','quit'].forEach(id=>$(id).addEventListener('click',()=>setTimeout(renderHome,0)));
+
+/* --- 列印 --- */
+function qBlock(q,n,showAns){return '<div class="item"><div><b>'+(showAns?'':'（　）')+n+'. '+esc(q.q)+'</b></div>'+q.opts.map((t,j)=>'<div>（'+LET[j]+'）'+esc(t)+'</div>').join('')+'</div>'}
+function ansBlock(items){return '<h2 style="break-before:page">解答與解析</h2>'+items.map((q,k)=>'<p>'+(k+1)+'. '+LET[q.a]+'　'+esc(q.opts[q.a])+'　'+esc(q.exp)+'</p>').join('')}
+function sheetWB(){const w=wbList();
+ openX('<div class="noprint"><button class="pri" onclick="print()">🖨 列印／存成 PDF</button> <button onclick="closeX()">返回</button></div><div class="sheet"><h1>我的錯題卷</h1><p>班級＿＿　座號＿＿　姓名＿＿</p>'+w.map((q,k)=>qBlock(q,k+1)).join('')+ansBlock(w)+'</div>')}
+function psheet(tc){const it=BK.items;
+ openX('<div class="noprint"><button class="pri" onclick="print()">🖨 列印／存成 PDF</button> <button onclick="bank()">返回抽題區</button></div><div class="sheet"><h1>'+esc(TTL)+'　抽題卷（'+(tc?'教師版':'學生版')+'）</h1><p>'+(tc?'含解答與解析':'班級＿＿　座號＿＿　姓名＿＿　得分＿＿')+'</p>'+it.map((q,k)=>qBlock(q,k+1)).join('')+(tc?ansBlock(it):'')+'</div>')}
+
+/* --- 題庫抽題與下載區 --- */
+const BK={sel:new Set(CATS.map(c=>c.k)),n:20,items:null};
+function bank(){document.body.classList.remove('proj');
+ openX('<h1>📥 題庫抽題與下載區</h1><p class="sub">自選範圍與題數抽出一份題組，再分別下載「學生版」與「教師版」（兩份來自同一次抽題）</p><div class="panel"><b>① 選範圍</b>'+
+  CATS.map(c=>'<label style="display:block;margin:4px 0"><input type="checkbox" data-k="'+c.k+'" '+(BK.sel.has(c.k)?'checked':'')+'> <span style="color:'+c.color+';font-weight:700">'+esc(c.n)+'</span>（'+POOL.filter(q=>q.cat===c.k).length+' 題）</label>').join('')+
+  '<b>② 題數</b> <input id="nn" type="number" min="5" max="60" value="'+BK.n+'" style="width:72px;font:inherit"> 題<div class="row"><button class="pri" id="dr">🎲 抽題</button><button onclick="closeX()">返回首頁</button></div></div><div id="out"></div>');
+ X.querySelectorAll('[data-k]').forEach(c=>c.onchange=()=>{c.checked?BK.sel.add(c.dataset.k):BK.sel.delete(c.dataset.k)});
+ $('dr').onclick=draw;if(BK.items)bshow()}
+function draw(){BK.n=Math.max(5,Math.min(60,+$('nn').value||20));
+ const ks=CATS.map(c=>c.k).filter(k=>BK.sel.has(k));
+ if(!ks.length){$('out').innerHTML='<div class="panel">請至少選一個範圍。</div>';return}
+ BK.items=shuf(POOL.filter(q=>ks.includes(q.cat))).slice(0,BK.n).map(mixQ).sort((a,b)=>ks.indexOf(a.cat)-ks.indexOf(b.cat));bshow()}
+function bshow(){const it=BK.items;
+ $('out').innerHTML='<div class="panel"><b>已抽出 '+it.length+' 題</b>'+(it.length<BK.n?'<span class="mut">（所選範圍題庫不足 '+BK.n+' 題，已全部抽出）</span>':'')+
+  '<div style="max-height:260px;overflow:auto;margin-top:8px;font-size:15px">'+it.map((q,k)=>'<p>'+(k+1)+'. '+esc(q.q)+'</p>').join('')+'</div></div>'+
+  '<div class="panel" style="border-color:#1c7ed6"><b>🧒 學生版</b> <span class="mut">題目卷，答案欄空白，有姓名座號欄</span><div class="row"><button class="pri" data-d="0">下載 Word</button><button data-p="0">列印／存成 PDF</button></div></div>'+
+  '<div class="panel" style="border-color:#c2477a"><b>👩‍🏫 教師版</b> <span class="mut">題目＋最後一頁解答與解析</span><div class="row"><button class="pri" data-d="1">下載 Word</button><button data-p="1">列印／存成 PDF</button></div></div><p id="bkmsg" class="mut"></p>';
+ X.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>dl(+b.dataset.d));X.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>psheet(+b.dataset.p))}
+const XE=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function docxXml(items,tc){const F='<w:rFonts w:ascii="Microsoft JhengHei" w:eastAsia="Microsoft JhengHei" w:hAnsi="Microsoft JhengHei"/>';
+ const P=(t,o={})=>'<w:p><w:pPr>'+(o.c?'<w:jc w:val="center"/>':'')+(o.ind?'<w:ind w:left="400"/>':'')+'<w:spacing w:after="'+(o.ind?140:40)+'"/></w:pPr><w:r><w:rPr>'+F+(o.b?'<w:b/>':'')+(o.col?'<w:color w:val="'+o.col+'"/>':'')+'<w:sz w:val="'+(o.sz||22)+'"/></w:rPr><w:t xml:space="preserve">'+XE(t)+'</w:t></w:r></w:p>';
+ let b=P(TTL+'　抽題卷（'+(tc?'教師版':'學生版')+'）',{b:1,sz:36,col:'B3261E',c:1});
+ b+=P(tc?'共 '+items.length+' 題・含解答與解析':'班級：＿＿＿＿　座號：＿＿＿＿　姓名：＿＿＿＿＿＿　得分：＿＿＿＿',{col:'666666'});
+ items.forEach((q,k)=>{b+=P('（　）'+(k+1)+'. '+q.q,{b:1});b+=P(q.opts.map((t,j)=>'('+LET[j]+') '+t).join('　　'),{ind:1})});
+ if(tc){b+='<w:p><w:r><w:br w:type="page"/></w:r></w:p>'+P('解答與解析',{b:1,sz:32,col:'1E8A4C'});
+  items.forEach((q,k)=>{b+=P((k+1)+'. '+LET[q.a]+'　'+q.opts[q.a]+'　'+q.exp,{ind:1})})}
+ return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+b+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1020" w:right="1020" w:bottom="1020" w:left="1020" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>'}
+async function mkDocx(items,tc){const z=new JSZip();
+ z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+ z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+ z.file('word/document.xml',docxXml(items,tc));return z.generateAsync({type:'blob'})}
+async function dl(tc){const m=$('bkmsg');
+ try{const bl=await mkDocx(BK.items,!!tc),a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download=(tc?'教師版':'學生版')+'_'+TTL+'抽題卷.docx';document.body.appendChild(a);a.click();a.remove();m.textContent='✅ 已下載'}
+ catch(e){m.textContent='下載失敗，請改用「列印／存成 PDF」。'}}
+
+/* --- 上課投影模式 --- */
+function proj(ck){document.body.classList.add('proj');
+ const mk=()=>shuf(POOL.filter(q=>ck==='all'||q.cat===ck)).map(mixQ);
+ let qs=mk(),k=0,rev=0,tm=[0,0,0,0];
+ const label=ck==='all'?'🎯 全部':'▶ '+catOf(ck).n;
+ const render=()=>{const q=qs[k],c=catOf(q.cat);
+  X.innerHTML='<div class="hdr"><b>'+esc(label)+'</b><span class="mut">第 '+(k+1)+' / '+qs.length+' 題　［空白鍵：揭曉／下一題　Esc：離開］</span><button id="pjx">離開</button></div>'+
+   '<div class="panel"><div style="font-size:1rem;font-weight:700;color:'+c.color+'">'+(q.star?'★ ':'')+esc(c.n)+'</div><div class="pj">'+esc(q.q)+'</div>'+
+   q.opts.map((t,j)=>'<div class="pjo '+(rev&&j===q.a?'ok':'')+'"><b>'+LET[j]+'</b>　'+esc(t)+'</div>').join('')+
+   '<div class="pjex '+(rev?'on':'')+'">'+esc(q.exp)+'</div></div>'+
+   '<p><button class="pri" id="pjgo" style="font-size:1.2rem;padding:10px 24px">'+(rev?'下一題 ➜':'揭曉答案')+'</button></p>'+
+   '<div class="tmw">'+tm.map((v,j)=>'<div>第'+(j+1)+'組<b>'+v+'</b><button data-t="'+j+'">＋1</button> <button data-m="'+j+'">－1</button></div>').join('')+'</div>';
+  $('pjx').onclick=closeX;$('pjgo').onclick=nx;
+  X.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{tm[+b.dataset.t]++;render()});
+  X.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{tm[+b.dataset.m]--;render()})};
+ const nx=()=>{if(!rev)rev=1;else{rev=0;k++;if(k>=qs.length){qs=mk();k=0}}render()};
+ document.onkeydown=e=>{if(e.code==='Space'){e.preventDefault();nx()}else if(e.key==='Escape')closeX()};
+ openX('');render()}
 </script></body></html>
